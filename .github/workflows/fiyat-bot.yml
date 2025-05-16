@@ -1,0 +1,38 @@
+name: Fiyat Bot Çalıştır
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Her sabah 09:00'da otomatik çalışır (UTC+3 farkı)
+  workflow_dispatch:  # Elle çalıştırmak için buton da olur
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Repo'yu Klonla
+      uses: actions/checkout@v4
+
+    - name: Python Kurulumu
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Gerekli Python Paketlerini Kur
+      run: |
+        pip install selenium pandas python-telegram-bot
+
+    - name: Chrome ve Chromedriver Kurulumu
+      run: |
+        sudo apt update
+        sudo apt install -y wget unzip
+        wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+        sudo apt install -y ./google-chrome-stable_current_amd64.deb
+        wget https://chromedriver.storage.googleapis.com/$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip
+        unzip chromedriver_linux64.zip
+        sudo mv chromedriver /usr/bin/chromedriver
+        sudo chmod +x /usr/bin/chromedriver
+
+    - name: Fiyat Botunu Çalıştır
+      run: |
+        python fiyat_bot.py
