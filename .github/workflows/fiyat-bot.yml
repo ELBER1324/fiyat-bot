@@ -1,9 +1,9 @@
 name: Fiyat Bot Çalıştır
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 6 * * *'  # Her sabah 09:00'da otomatik çalışır (UTC+3 farkı)
-  workflow_dispatch:  # Elle çalıştırmak için buton da olur
+    - cron: '0 6 * * *'
 
 jobs:
   run-bot:
@@ -18,19 +18,21 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Gerekli Python Paketlerini Kur
+    - name: Gerekli Paketleri Kur
       run: |
         pip install selenium pandas python-telegram-bot
 
-    - name: Chrome ve Chromedriver Kurulumu
+    - name: Chrome ve Doğru ChromeDriver Kurulumu
       run: |
         sudo apt update
         sudo apt install -y wget unzip
         wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
         sudo apt install -y ./google-chrome-stable_current_amd64.deb
-        wget https://chromedriver.storage.googleapis.com/$(curl -sS https://chromedriver.storage.googleapis.com/LATEST_RELEASE)/chromedriver_linux64.zip
-        unzip chromedriver_linux64.zip
-        sudo mv chromedriver /usr/bin/chromedriver
+        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+' | head -1)
+        CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/LATEST_RELEASE_${CHROME_VERSION}")
+        wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/${CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip
+        unzip chromedriver-linux64.zip
+        sudo mv chromedriver-linux64/chromedriver /usr/bin/chromedriver
         sudo chmod +x /usr/bin/chromedriver
 
     - name: Fiyat Botunu Çalıştır
