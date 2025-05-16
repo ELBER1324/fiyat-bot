@@ -2,16 +2,16 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import pandas as pd
 from telegram import Bot
 import time, os
 import traceback
 
-# 📲 TELEGRAM AYARLARI
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
-# 🛒 ÜRÜNLER (Güncel linkler, örnek)
 products = [
     {
         'name': 'Trendyol Samsung Galaxy S23 Ultra',
@@ -30,35 +30,48 @@ products = [
     }
 ]
 
-# 📤 TELEGRAM MESAJ GÖNDERME
 def send_telegram_message(message):
     bot = Bot(token=TELEGRAM_TOKEN)
     bot.send_message(chat_id=CHAT_ID, text=message)
 
-# 🔍 FİYAT ÇEKME
 def get_price(driver, url, site):
     driver.get(url)
-    time.sleep(5)
+    try:
+        if site == 'trendyol':
+            price_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, 'prc-dsc'))
+            )
+        elif site == 'hepsiburada':
+            price_element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.ID, 'offering-price'))
+            )
+        elif site == 'amazon':
+            try:
+                price_element = WebDriverWait(driver, 10).until(
+                    EC.presence_of_element_located((By.ID, 'priceblock_ourprice'))
+                )
+            except:
+                try:
+                    price_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.ID, 'priceblock_dealprice'))
+                    )
+                except:
+                    price_element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.ID, 'corePrice_feature_div'))
+                    )
+        else:
+            return None
 
-    if site == 'trendyol':
-        price_element = driver.find_element(By.CSS_SELECTOR, '.product-price-container span')
-    elif site == 'hepsiburada':
-        price_element = driver.find_element(By.CSS_SELECTOR, '[data-bind*="formattedPrice"]')
-    elif site == 'amazon':
-        try:
-            price_element = driver.find_element(By.ID, 'priceblock_ourprice')
-        except:
-            price_element = driver.find_element(By.ID, 'priceblock_dealprice')
-    else:
+        price_text = price_element.text.replace('TL', '').replace('₺', '').replace('.', '').replace(',', '.').strip()
+        return float(''.join(filter(lambda x: x.isdigit() or x == '.', price_text)))
+
+    except Exception as e:
+        print(f"Hata (element bulunamadı veya sayfa tam yüklenmedi): {e}")
+        traceback.print_exc()
         return None
 
-    price_text = price_element.text.replace('TL', '').replace('.', '').replace(',', '.').strip()
-    return float(price_text)
-
-# 📊 CSV'YE KAYDET VE KARŞILAŞTIR
 def update_price_history(product_name, current_price):
     CSV_FILE = 'fiyat_takip.csv'
-
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
     else:
@@ -81,7 +94,6 @@ def update_price_history(product_name, current_price):
         else:
             print(f"Fiyat değişmedi: {product_name}")
 
-# 🛠️ BOTU ÇALIŞTIR
 def main():
     options = Options()
     options.add_argument('--headless')
@@ -95,10 +107,13 @@ def main():
         try:
             print(f"{product['name']} fiyatı kontrol ediliyor...")
             current_price = get_price(driver, product['url'], product['site'])
-            print(f"Şu anki fiyat: {current_price} TL")
-            update_price_history(product['name'], current_price)
+            if current_price:
+                print(f"Şu anki fiyat: {current_price} TL")
+                update_price_history(product['name'], current_price)
+            else:
+                print(f"{product['name']} için fiyat bulunamadı.")
         except Exception as e:
-            print(f"Hata: {e}")
+            print(f"Genel Hata: {e}")
             traceback.print_exc()
 
     driver.quit()
