@@ -5,23 +5,28 @@ from selenium.webdriver.chrome.options import Options
 import pandas as pd
 from telegram import Bot
 import time, os
-import traceback  # HATA AYDINLATMA İÇİN
+import traceback
 
-# 📲 TELEGRAM BİLGİLERİ
+# 📲 TELEGRAM AYARLARI
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 
-# 🛒 ÜRÜNLER
+# 🛒 ÜRÜNLER (Güncel linkler, örnek)
 products = [
     {
-        'name': 'Trendyol Örnek Ürün',
-        'url': 'https://www.trendyol.com/ürün-linki',
+        'name': 'Trendyol Samsung Galaxy S23 Ultra',
+        'url': 'https://www.trendyol.com/samsung/galaxy-s23-ultra-256-gb-p-653269674',
         'site': 'trendyol'
     },
     {
-        'name': 'Hepsiburada Örnek Ürün',
-        'url': 'https://www.hepsiburada.com/ürün-linki',
+        'name': 'Hepsiburada Samsung Galaxy S23 Ultra',
+        'url': 'https://www.hepsiburada.com/samsung-galaxy-s23-ultra-256-gb-p-HBCV00003M12J6',
         'site': 'hepsiburada'
+    },
+    {
+        'name': 'Amazon Samsung Galaxy S23 Ultra',
+        'url': 'https://www.amazon.com.tr/dp/B0BP9P1MKL',
+        'site': 'amazon'
     }
 ]
 
@@ -33,12 +38,17 @@ def send_telegram_message(message):
 # 🔍 FİYAT ÇEKME
 def get_price(driver, url, site):
     driver.get(url)
-    time.sleep(3)
+    time.sleep(5)
 
     if site == 'trendyol':
-        price_element = driver.find_element(By.CLASS_NAME, 'prc-dsc')
+        price_element = driver.find_element(By.CSS_SELECTOR, '.product-price-container span')
     elif site == 'hepsiburada':
-        price_element = driver.find_element(By.CLASS_NAME, 'priceValue')
+        price_element = driver.find_element(By.CSS_SELECTOR, '[data-bind*="formattedPrice"]')
+    elif site == 'amazon':
+        try:
+            price_element = driver.find_element(By.ID, 'priceblock_ourprice')
+        except:
+            price_element = driver.find_element(By.ID, 'priceblock_dealprice')
     else:
         return None
 
